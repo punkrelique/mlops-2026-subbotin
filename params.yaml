@@ -2,7 +2,7 @@
 # По ходу курса этот файл вырастет: занятие 3 — гиперпараметры,
 # занятие 5 — пути стадий, занятие 6 — настройки MLflow.
 
-seed: 42
+seed: &seed 42
 
 data:
   n_samples: 20000
@@ -29,4 +29,20 @@ features:
 
 # TODO (занятие 3): перенести сюда гиперпараметры модели
 train:
-  model: logreg
+  model: gradient_boosting
+
+logreg:
+  max_iter: 100
+  random_state: *seed
+  l1_ratio: 0
+
+random_forest:
+  n_estimators: 100
+  max_depth: 10
+  random_state: *seed
+  n_jobs: -1
+
+gradient_boosting:
+  n_estimators: 100
+  max_depth: 10
+  random_state: *seed  

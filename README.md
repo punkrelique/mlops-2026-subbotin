@@ -1,3 +1,5 @@
+[MLOPS2026](https://github.com/alsu124/mlops-deploy-course/blob/main/lessons/01-intro-project-setup/handout.md)
+
 # Churn MLOps — стартовый шаблон
 
 Это заготовка сквозного проекта курса. Здесь вы работаете весь семестр:

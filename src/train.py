@@ -29,7 +29,7 @@ def main() -> None:
     import pandas as pd
     import joblib
     from sklearn.pipeline import Pipeline
-    from sklearn.ensemble import RandomForestClassifier
+    from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
     from sklearn.metrics import roc_auc_score, f1_score
     from sklearn.metrics import precision_recall_curve, auc
 
@@ -56,14 +56,10 @@ def main() -> None:
 
     # 3. Строим Pipeline (препроцессор + модель)
     log.info("Построение Pipeline...")
+    log.info(f"Модель {params["train"]["model"]}")
     pipe = Pipeline([
         ("preprocess", build_preprocessor(params)),
-        ("model", RandomForestClassifier(
-            n_estimators=100,
-            max_depth=10,
-            random_state=params["seed"],
-            n_jobs=-1,
-        )),
+        ("model", build_model(params)),
     ])
 
     # 4. Обучаем
@@ -109,6 +105,21 @@ def main() -> None:
 
     log.info(f"Метрики сохранены в {metrics_path}")
 
+def build_model(params: dict) -> any:
+    from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+    from sklearn.linear_model import LogisticRegression
+
+    model = params["train"]["model"]
+    hyperparams = dict(params[model])
+    match model:
+        case "logreg":
+            return LogisticRegression(**hyperparams)
+        case "random_forest":
+            return RandomForestClassifier(**hyperparams)
+        case "gradient_boosting":
+            return GradientBoostingClassifier(**hyperparams)
+        case _:
+            raise ValueError("Model is not specified.")
 
 if __name__ == "__main__":
     main()
