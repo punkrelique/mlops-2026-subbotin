@@ -40,10 +40,15 @@ def feature_columns(params: dict[str, Any]) -> list:
 
 
 def data_md5(raw_path: str) -> str:
-    """Хеш версии данных из .dvc файла, привязывает метрики к версии данных."""
-    dvc_path = resolve(f"{raw_path}.dvc")
-    with open(dvc_path, encoding="utf-8") as f:
-        return yaml.safe_load(f)["outs"][0]["md5"]
+    """Хеш версии данных из dvc.lock, привязывает метрики к версии данных."""
+    lock_path = resolve("dvc.lock")
+    with open(lock_path, encoding="utf-8") as f:
+        lock = yaml.safe_load(f)
+    for stage in lock["stages"].values():
+        for out in stage.get("outs", []):
+            if out["path"] == raw_path:
+                return out["md5"]
+    raise KeyError(f"{raw_path} не найден в dvc.lock")
 
 
 def update_data_stats(section: str, data: dict[str, Any]) -> Path:

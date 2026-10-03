@@ -139,8 +139,8 @@ stages:
       isexec: true
     - path: src/evaluate.py
       hash: md5
-      md5: dd4790f56a944b1afcc85dd94a16effb
-      size: 2249
+      md5: 2cd07200d5bf1a9fbef416e6372de028
+      size: 2540
       isexec: true
     params:
       params.yaml:
@@ -152,4 +152,9 @@ stages:
       hash: md5
       md5: dff13157192f241f5b2a9192cb0d8642
       size: 95
+      isexec: true
+    - path: reports/roc.json
+      hash: md5
+      md5: d502382134915a9554929e8419702dfa
+      size: 12261
       isexec: true

@@ -52,3 +52,8 @@ stages:
     metrics:
       - reports/eval_metrics.json:
           cache: false
+    plots:
+      - reports/roc.json:
+          x: fpr
+          y: tpr
+          cache: false
