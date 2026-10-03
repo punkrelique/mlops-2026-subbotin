@@ -26,7 +26,6 @@ features:
     - has_tech_support
     - is_senior
 
-# TODO (занятие 3): перенести сюда гиперпараметры модели
 train:
   model: gradient_boosting
   logreg:
