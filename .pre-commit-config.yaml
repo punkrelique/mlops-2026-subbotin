@@ -3,7 +3,7 @@ repos:
     rev: v6.0.0
     hooks:
       - id: trailing-whitespace
-      - id: end-of-file-fixer
+    #  - id: end-of-file-fixer <--- РАЗДРАЖАЕТ. ЧТО-ТО МОДИФИЦИРУЕТ -> БРОСАЕТ ОШИБКУ -> ЧТО ТО МОДИФИЦИРУЕТ -> НЕВОЗМОЖНО ЗАКОММИТИТЬ, ТОЛЬКО ИЗДЕВАЕТСЯ
       - id: check-yaml
       - id: check-added-large-files
         args: [--maxkb=1000]

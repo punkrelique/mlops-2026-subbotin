@@ -22,7 +22,7 @@ def main() -> None:
     from sklearn.metrics import auc, f1_score, precision_recall_curve, roc_auc_score
     from sklearn.pipeline import Pipeline
 
-    from src.config import TARGET, feature_columns, resolve
+    from src.config import TARGET, data_md5, feature_columns, resolve, update_data_stats
     from src.features import build_preprocessor
 
     # 1. Загружаем данные
@@ -94,7 +94,8 @@ def main() -> None:
     with open(metrics_path, "w") as f:
         json.dump(metrics, f, indent=2)
 
-    log.info(f"Метрики сохранены в {metrics_path}")
+    stats_path = update_data_stats("train", {"data_md5": data_md5(d["raw_path"])})
+    log.info(f"Метрики сохранены в {metrics_path} и {stats_path}")
 
 
 def build_model(params: dict) -> any:

@@ -1,0 +1,8 @@
+[core]
+    analytics = false
+    remote = rustfs
+['remote "localremote"']
+    url = /home/punkrelique/dvcstore
+['remote "rustfs"']
+    url = s3://mlops/churn
+    endpointurl = http://localhost:9000
