@@ -1,0 +1,155 @@
+schema: '2.0'
+stages:
+  generate:
+    cmd: python -m src.data.generate
+    deps:
+    - path: src/data/generate.py
+      hash: md5
+      md5: 6004203ab52c6512b4c254fcd257ab8c
+      size: 5169
+      isexec: true
+    params:
+      params.yaml:
+        data.n_samples: 20000
+        seed: 42
+    outs:
+    - path: data/raw/churn.csv
+      hash: md5
+      md5: a0038705ffe95c3e1856f5f58bb0cbff
+      size: 1408863
+      isexec: true
+  prepare:
+    cmd: python -m src.data.prepare
+    deps:
+    - path: data/raw/churn.csv
+      hash: md5
+      md5: a0038705ffe95c3e1856f5f58bb0cbff
+      size: 1408863
+      isexec: true
+    - path: src/data/prepare.py
+      hash: md5
+      md5: fff04e90e9615235a5010bce50584ebd
+      size: 3010
+      isexec: true
+    params:
+      params.yaml:
+        data.test_size: 0.2
+        data.val_size: 0.1
+        seed: 42
+    outs:
+    - path: data/processed/test.csv
+      hash: md5
+      md5: ade80bf225716d28ad0c1454d2545fd3
+      size: 282733
+      isexec: true
+    - path: data/processed/train.csv
+      hash: md5
+      md5: 49b63665b5a47b55be26ddff6cc4f5be
+      size: 987187
+      isexec: true
+    - path: data/processed/val.csv
+      hash: md5
+      md5: 5e51e04b8dbda78562658ab3d8ca8114
+      size: 141025
+      isexec: true
+  train:
+    cmd: python -m src.train
+    deps:
+    - path: data/processed/train.csv
+      hash: md5
+      md5: 49b63665b5a47b55be26ddff6cc4f5be
+      size: 987187
+      isexec: true
+    - path: data/processed/val.csv
+      hash: md5
+      md5: 5e51e04b8dbda78562658ab3d8ca8114
+      size: 141025
+      isexec: true
+    - path: src/features.py
+      hash: md5
+      md5: 6a1722ea024e239905f39299fbba648b
+      size: 2246
+      isexec: true
+    - path: src/train.py
+      hash: md5
+      md5: a2958430810e0aa68d692bd9b92690df
+      size: 3866
+      isexec: true
+    params:
+      params.yaml:
+        features:
+          numeric:
+          - tenure_months
+          - monthly_charges
+          - total_charges
+          - num_support_calls
+          - avg_monthly_gb
+          categorical:
+          - contract_type
+          - internet_service
+          - payment_method
+          binary:
+          - has_tech_support
+          - is_senior
+        seed: 42
+        train:
+          model: gradient_boosting
+          logreg:
+            C: 1.0
+            max_iter: 1000
+            random_state: 42
+          random_forest:
+            n_estimators: 300
+            max_depth: 12
+            min_samples_leaf: 5
+            random_state: 42
+          gradient_boosting:
+            n_estimators: 200
+            learning_rate: 0.05
+            max_depth: 3
+            random_state: 42
+    outs:
+    - path: models/model.joblib
+      hash: md5
+      md5: a6ec1ea65f4c20c7485813df2485c2fb
+      size: 276701
+      isexec: true
+    - path: models/model_meta.json
+      hash: md5
+      md5: fdc193077683bf9e1711e4f8f6512d37
+      size: 274
+      isexec: true
+    - path: reports/train_metrics.json
+      hash: md5
+      md5: 48445884928489e01e571eca93f64e91
+      size: 94
+      isexec: true
+  evaluate:
+    cmd: python -m src.evaluate
+    deps:
+    - path: data/processed/test.csv
+      hash: md5
+      md5: ade80bf225716d28ad0c1454d2545fd3
+      size: 282733
+      isexec: true
+    - path: models/model.joblib
+      hash: md5
+      md5: a6ec1ea65f4c20c7485813df2485c2fb
+      size: 276701
+      isexec: true
+    - path: src/evaluate.py
+      hash: md5
+      md5: dd4790f56a944b1afcc85dd94a16effb
+      size: 2249
+      isexec: true
+    params:
+      params.yaml:
+        evaluate:
+          threshold: 0.5
+          min_roc_auc: 0.75
+    outs:
+    - path: reports/eval_metrics.json
+      hash: md5
+      md5: dff13157192f241f5b2a9192cb0d8642
+      size: 95
+      isexec: true
