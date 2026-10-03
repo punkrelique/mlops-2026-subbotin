@@ -4,8 +4,10 @@
 и не хранят пути внутри себя. Это то, ради чего на занятии 3 всё выносилось
 из кода — здесь видно результат.
 """
+
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 from typing import Any
@@ -35,6 +37,27 @@ def resolve(relative: str) -> Path:
 def feature_columns(params: dict[str, Any]) -> list:
     f = params["features"]
     return list(f["numeric"]) + list(f["categorical"]) + list(f["binary"])
+
+
+def data_md5(raw_path: str) -> str:
+    """Хеш версии данных из .dvc файла, привязывает метрики к версии данных."""
+    dvc_path = resolve(f"{raw_path}.dvc")
+    with open(dvc_path, encoding="utf-8") as f:
+        return yaml.safe_load(f)["outs"][0]["md5"]
+
+
+def update_data_stats(section: str, data: dict[str, Any]) -> Path:
+    """Мерджит метрики стадии в общий reports/data_stats.json по ключу."""
+    stats_path = resolve("reports/data_stats.json")
+    stats_path.parent.mkdir(parents=True, exist_ok=True)
+    stats: dict[str, Any] = {}
+    if stats_path.exists():
+        with open(stats_path, encoding="utf-8") as f:
+            stats = json.load(f)
+    stats[section] = data
+    with open(stats_path, "w", encoding="utf-8") as f:
+        json.dump(stats, f, indent=2)
+    return stats_path
 
 
 TARGET = "churn"
