@@ -1,17 +1,7 @@
 """Стадия train.
-
-TODO (занятие 1): перенести сюда логику из notebooks/baseline_notebook.py,
-исправив всё, что вы в ней нашли.
-
-Обязательно:
-  * никаких абсолютных путей — только src.config.resolve();
-  * никаких магических чисел — только params.yaml;
-  * зафиксированный seed;
-  * модель сохраняется в models/model.joblib вместе с препроцессором;
-  * метрики пишутся в reports/train_metrics.json.
-
 Запуск: python -m src.train
 """
+
 from __future__ import annotations
 
 from src.config import load_params
@@ -26,14 +16,13 @@ def main() -> None:
     # Импорты
     import json
     from pathlib import Path
-    import pandas as pd
-    import joblib
-    from sklearn.pipeline import Pipeline
-    from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-    from sklearn.metrics import roc_auc_score, f1_score
-    from sklearn.metrics import precision_recall_curve, auc
 
-    from src.config import resolve, feature_columns, TARGET
+    import joblib
+    import pandas as pd
+    from sklearn.metrics import auc, f1_score, precision_recall_curve, roc_auc_score
+    from sklearn.pipeline import Pipeline
+
+    from src.config import TARGET, feature_columns, resolve
     from src.features import build_preprocessor
 
     # 1. Загружаем данные
@@ -44,8 +33,8 @@ def main() -> None:
     train_df = pd.read_csv(processed_dir / "train.csv")
     val_df = pd.read_csv(processed_dir / "val.csv")
 
-    log.info(f"train: {len(train_df)} строк, {(train_df[TARGET]==1).mean():.1%} оттока")
-    log.info(f"val  : {len(val_df)} строк, {(val_df[TARGET]==1).mean():.1%} оттока")
+    log.info(f"train: {len(train_df)} строк, {(train_df[TARGET] == 1).mean():.1%} оттока")
+    log.info(f"val  : {len(val_df)} строк, {(val_df[TARGET] == 1).mean():.1%} оттока")
 
     # 2. Признаки и целевая переменная
     cols = feature_columns(params)
@@ -56,11 +45,13 @@ def main() -> None:
 
     # 3. Строим Pipeline (препроцессор + модель)
     log.info("Построение Pipeline...")
-    log.info(f"Модель {params["train"]["model"]}")
-    pipe = Pipeline([
-        ("preprocess", build_preprocessor(params)),
-        ("model", build_model(params)),
-    ])
+    log.info(f"Модель {params['train']['model']}")
+    pipe = Pipeline(
+        [
+            ("preprocess", build_preprocessor(params)),
+            ("model", build_model(params)),
+        ]
+    )
 
     # 4. Обучаем
     log.info("Обучение...")
@@ -105,21 +96,22 @@ def main() -> None:
 
     log.info(f"Метрики сохранены в {metrics_path}")
 
+
 def build_model(params: dict) -> any:
-    from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+    from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
     from sklearn.linear_model import LogisticRegression
 
     model = params["train"]["model"]
-    hyperparams = dict(params[model])
-    match model:
-        case "logreg":
-            return LogisticRegression(**hyperparams)
-        case "random_forest":
-            return RandomForestClassifier(**hyperparams)
-        case "gradient_boosting":
-            return GradientBoostingClassifier(**hyperparams)
-        case _:
-            raise ValueError("Model is not specified.")
+    cfg = params["train"].get(model, {})
+    if model == "logreg":
+        return LogisticRegression(**cfg)
+    elif model == "random_forest":
+        return RandomForestClassifier(**cfg)
+    elif model == "gradient_boosting":
+        return GradientBoostingClassifier(**cfg)
+    else:
+        raise ValueError("Model is not specified.")
+
 
 if __name__ == "__main__":
     main()
