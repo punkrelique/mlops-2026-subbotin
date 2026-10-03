@@ -2,7 +2,9 @@
 # вспоминать по истории терминала, оформляем целью здесь.
 .PHONY: help install check data prepare train test lint
 
-PY := python
+export PATH := .venv/bin:$(PATH) ## Выполнять команды в окружении
+
+PY := python3
 
 help:            ## Показать список команд
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS=":.*?## "}; {printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
@@ -22,6 +24,9 @@ prepare:         ## Подготовить train/val/test
 
 train:           ## Обучить модель
 	$(PY) -m src.train
+
+eval:            ## Оценить модель на тесте и проверить gate качества
+	$(PY) -m src.evaluate
 
 test:            ## Прогнать тесты
 	pytest
