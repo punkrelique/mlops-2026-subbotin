@@ -101,6 +101,8 @@ def main() -> None:
     stats_path = update_data_stats("train", {"data_md5": data_md5(d["raw_path"])})
     log.info(f"Метрики сохранены в {metrics_path} и {stats_path}")
 
+    log_to_mlflow(params, pipe, metrics, train_df.head(5))
+
 
 def build_model(params: dict) -> any:
     from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
@@ -116,6 +118,35 @@ def build_model(params: dict) -> any:
         return GradientBoostingClassifier(**cfg)
     else:
         raise ValueError("Model is not specified.")
+
+
+def log_to_mlflow(params, pipe, metrics, input_example) -> None:
+    import mlflow
+    import mlflow.sklearn
+
+    log.info("Запись в mlflow")
+
+    cfg = params["mlflow"]
+    mlflow.set_tracking_uri(cfg["tracking_uri"])
+    mlflow.set_experiment(cfg["experiment_name"])
+
+    name = params["train"]["model"]
+    with mlflow.start_run():
+        mlflow.log_params({"model": name, "seed": params["seed"]})
+        mlflow.log_params({f"{name}.{k}": v for k, v in params["train"][name].items()})
+        mlflow.log_metrics(metrics)
+        mlflow.set_tag("git_sha", git_sha())
+        mlflow.log_artifact("params.yaml")
+        mlflow.sklearn.log_model(pipe, artifact_path="model", input_example=input_example)
+
+
+def git_sha() -> str:
+    import subprocess
+
+    try:
+        return subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+    except Exception:
+        return "unknown"
 
 
 if __name__ == "__main__":
