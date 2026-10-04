@@ -39,3 +39,6 @@ lint:            ## Проверить стиль
 
 pipeline:        ## Воспроизвести пайплайн
 	dvc repro
+
+leaderboard:     ## Собрать таблицу лидеров из MLflow
+	$(PY) -m scripts.leaderboard

@@ -8,6 +8,7 @@ import argparse
 
 from src.config import load_params
 from src.logging_setup import setup_logging
+from utils.git import git_sha
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--no-mlflow", action="store_true")
@@ -157,15 +158,6 @@ def log_to_mlflow(params, pipe, metrics, input_example, y_val, val_proba) -> Non
         fig.savefig("reports/roc_curve.png", dpi=100, bbox_inches="tight")
         mlflow.log_artifact("reports/roc_curve.png")
         plt.close(fig)
-
-
-def git_sha() -> str:
-    import subprocess
-
-    try:
-        return subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
-    except Exception:
-        return "unknown"
 
 
 if __name__ == "__main__":
