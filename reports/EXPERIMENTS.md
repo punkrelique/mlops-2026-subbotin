@@ -18,18 +18,54 @@ F1:      0.3760
 ## Ответьте там же одним абзацем: почему при ROC-AUC около 0.79 значение F1 получается около 0.39? Что это говорит о пороге 0.5?
 Такое возможно, если у нас проблема в дисбалансе классифицируемых классов при высоком пороге. К примеру, у нас много зеленых шаров и крайне мало красных, то при высоком пороге зеленые и красные шары могут попасть под одну классификацию
 
-## Эксперимент: три модели x два набора гиперпараметров
+## Эксперимент
+Path                        Metric    HEAD     workspace    Change
+reports/eval_metrics.json   f1        0.41868  0.39676      -0.02192
+reports/eval_metrics.json   pr_auc    0.5282   0.51398      -0.01423
+reports/eval_metrics.json   roc_auc   0.80744  0.79944      -0.008
+reports/train_metrics.json  f1        0.38752  0.37377      -0.01375
+reports/train_metrics.json  pr_auc    0.51826  0.50006      -0.0182
+reports/train_metrics.json  roc_auc   0.80858  0.80438      -0.0042
 
-| Модель | Набор | Гиперпараметры | Val ROC-AUC | Val PR-AUC | Val F1 | Test ROC-AUC | Test PR-AUC | Test F1 |
-|---|---|---|---|---|---|---|---|---|
-| logreg | A (база) | C=1.0, max_iter=1000 | 0.8086 | 0.5183 | 0.3875 | 0.8074 | 0.5282 | 0.4187 |
-| logreg | B (альт) | C=0.05, max_iter=2000 | 0.8088 | 0.5194 | 0.3808 | 0.8075 | 0.5279 | 0.4101 |
-| random_forest | A (база) | n_estimators=300, max_depth=12, min_samples_leaf=5 | 0.7982 | 0.4918 | 0.3712 | 0.7953 | 0.5069 | 0.3881 |
-| random_forest | B (альт) | n_estimators=100, max_depth=5, min_samples_leaf=20 | 0.7997 | 0.4898 | 0.2921 | 0.7936 | 0.4964 | 0.2986 |
-| gradient_boosting | A (база) | n_estimators=200, learning_rate=0.05, max_depth=3 | 0.8044 | 0.5001 | 0.3738 | 0.7994 | 0.5140 | 0.3968 |
-| gradient_boosting | B (альт) | n_estimators=400, learning_rate=0.02, max_depth=2 | 0.8069 | 0.5080 | 0.3426 | 0.8011 | 0.5173 | 0.3736 |
+reports/eval_metrics.json   f1        0.41868  0.38806      -0.03062
+reports/eval_metrics.json   pr_auc    0.5282   0.50692      -0.02128
+reports/eval_metrics.json   roc_auc   0.80744  0.79529      -0.01215
+reports/train_metrics.json  f1        0.38752  0.37124      -0.01628
+reports/train_metrics.json  pr_auc    0.51826  0.49184      -0.02641
+reports/train_metrics.json  roc_auc   0.80858  0.7982       -0.01038
+
+reports/train_metrics.json  f1        0.38752  0.2905       -0.09702
+reports/train_metrics.json  pr_auc    0.51826  0.49158      -0.02667
+reports/train_metrics.json  roc_auc   0.80858  0.80095      -0.00763
+reports/eval_metrics.json   f1        0.41868  0.29602      -0.12266
+reports/eval_metrics.json   pr_auc    0.5282   0.49778      -0.03043
+reports/eval_metrics.json   roc_auc   0.80744  0.79339      -0.01405
 
 ## Почему вести такую таблицу руками уже неудобно и что хочется автоматизировать
 
 После шести прогонов ручная таблица перестает быть надежным источником истины. Каждый прогон требует вручную поменять params.yaml, запустить train и evaluate, открыть два JSON файла, переписать числа в markdown и не перепутать строки. При таком количестве действий легко скопировать значение не из того JSON, забыть какой набор гиперпараметров был активен в момент прогона или перезаписать результат предыдущего эксперимента
 Хочется автоматизировать запуск сетки экспериментов одной командой, автоматическое логирование параметров и метрик каждого прогона в единое хранилище с привязкой к git commit и версии данных
+
+## Три эксперимента: модель и гиперпараметры (dvc repro)
+
+| Запуск | Модель | Гиперпараметры | Train ROC-AUC | Train PR-AUC | Train F1 | Test ROC-AUC | Test PR-AUC | Test F1 |
+|---|---|---|---|---|---|---|---|---|
+| База (HEAD) | gradient_boosting | n_estimators=200, learning_rate=0.05, max_depth=3 | 0.8044 | 0.5001 | 0.3738 | 0.7994 | 0.5140 | 0.3968 |
+| Эксперимент 1 | logreg | C=1.0, max_iter=1000 | 0.8086 | 0.5183 | 0.3875 | 0.8074 | 0.5282 | 0.4187 |
+| Эксперимент 2 | random_forest | n_estimators=300, max_depth=12, min_samples_leaf=5 | 0.7982 | 0.4918 | 0.3712 | 0.7953 | 0.5069 | 0.3881 |
+| Эксперимент 3 | gradient_boosting | n_estimators=400, learning_rate=0.1, max_depth=4 | 0.7795 | 0.4690 | 0.4018 | 0.7808 | 0.4713 | 0.4080 |
+
+Эксперимент 1 (logreg) обгоняет базу по всем метрикам сразу. Эксперимент 2 проигрывает базе везде. Эксперимент 3 даёт лучший F1, но за счёт переобучения:
+ROC_AUC и PR_AUC падают, разрыв между train и test метриками растёт. params.yaml оставлен в конфигурации эксперимента 1.
+
+`dvc metrics diff HEAD` для рабочей копии в конфигурации эксперимента 1 против базового коммита:
+
+```
+Path                        Metric    HEAD     workspace    Change
+reports/train_metrics.json  f1        0.37377  0.38752      0.01375
+reports/train_metrics.json  pr_auc    0.50006  0.51826      0.0182
+reports/train_metrics.json  roc_auc   0.80438  0.80858      0.0042
+reports/eval_metrics.json   f1        0.39676  0.41868      0.02192
+reports/eval_metrics.json   pr_auc    0.51398  0.5282       0.01423
+reports/eval_metrics.json   roc_auc   0.79944  0.80744      0.008
+```

@@ -1,13 +1,5 @@
-"""Стадия prepare: сырой CSV -> train/val/test.
+"""Стадия prepare: сырой CSV -> train/val/test."""
 
-TODO (занятие 1):
-  1. прочитать data/raw/churn.csv;
-  2. обработать пропуски в total_charges осмысленно (не dropna!);
-  3. разбить на train/val/test со stratify по churn и random_state из params;
-  4. сохранить три CSV в data/processed/.
-
-Проверка: два запуска подряд должны дать одинаковые файлы.
-"""
 from __future__ import annotations
 
 from src.config import load_params
@@ -23,9 +15,10 @@ def main() -> None:
 
     # 1. Читаем raw данные
     log.info(f"Загружаю данные из {d['raw_path']}")
-    from src.config import resolve
     import pandas as pd
     from sklearn.model_selection import train_test_split
+
+    from src.config import resolve
 
     raw = pd.read_csv(resolve(d["raw_path"]))
     log.info(f"Загружено {len(raw)} строк, {len(raw.columns)} колонок")
@@ -40,20 +33,14 @@ def main() -> None:
     # 3. Разбиваем на train/val/test
     # Сначала отделяем тест
     train_val, test = train_test_split(
-        raw,
-        test_size=d["test_size"],
-        random_state=seed,
-        stratify=raw["churn"]
+        raw, test_size=d["test_size"], random_state=seed, stratify=raw["churn"]
     )
 
     # Потом отделяем валидацию от train
     # val_size задан в долях от всего датасета, а отделяем от остатка
     val_ratio = d["val_size"] / (1.0 - d["test_size"])
     train, val = train_test_split(
-        train_val,
-        test_size=val_ratio,
-        random_state=seed,
-        stratify=train_val["churn"]
+        train_val, test_size=val_ratio, random_state=seed, stratify=train_val["churn"]
     )
 
     # 4. Логируем размеры и долю оттока
@@ -62,8 +49,9 @@ def main() -> None:
         log.info(f"{name:5s}: {len(df):6d} строк, {churn_rate:.1%} оттока")
 
     # 5. Сохраняем
-    from src.config import resolve
     from pathlib import Path
+
+    from src.config import resolve
 
     processed_dir = Path(resolve(d["processed_dir"]))
     processed_dir.mkdir(parents=True, exist_ok=True)
