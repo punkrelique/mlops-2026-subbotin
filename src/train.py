@@ -108,7 +108,7 @@ def main() -> None:
     log.info(f"Метрики сохранены в {metrics_path} и {stats_path}")
 
     if params["mlflow"]["enabled"] and not args.no_mlflow:
-        log_to_mlflow(params, pipe, metrics, train_df[cols].head(5))
+        log_to_mlflow(params, pipe, metrics, train_df[cols].head(5), y_val, y_pred_proba)
 
 
 def build_model(params: dict) -> any:
@@ -127,7 +127,7 @@ def build_model(params: dict) -> any:
         raise ValueError("Model is not specified.")
 
 
-def log_to_mlflow(params, pipe, metrics, input_example) -> None:
+def log_to_mlflow(params, pipe, metrics, input_example, y_val, val_proba) -> None:
     import mlflow
     import mlflow.sklearn
 
@@ -145,6 +145,18 @@ def log_to_mlflow(params, pipe, metrics, input_example) -> None:
         mlflow.set_tag("git_sha", git_sha())
         mlflow.log_artifact("params.yaml")
         mlflow.sklearn.log_model(pipe, artifact_path="model", input_example=input_example)
+
+        import matplotlib
+
+        matplotlib.use("Agg")  # без этого упадёт в среде без дисплея
+        import matplotlib.pyplot as plt
+        from sklearn.metrics import RocCurveDisplay
+
+        fig, ax = plt.subplots(figsize=(5, 5))
+        RocCurveDisplay.from_predictions(y_val, val_proba, ax=ax)
+        fig.savefig("reports/roc_curve.png", dpi=100, bbox_inches="tight")
+        mlflow.log_artifact("reports/roc_curve.png")
+        plt.close(fig)
 
 
 def git_sha() -> str:
