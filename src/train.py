@@ -4,8 +4,14 @@
 
 from __future__ import annotations
 
+import argparse
+
 from src.config import load_params
 from src.logging_setup import setup_logging
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--no-mlflow", action="store_true")
+args = parser.parse_args()
 
 log = setup_logging()
 
@@ -101,7 +107,8 @@ def main() -> None:
     stats_path = update_data_stats("train", {"data_md5": data_md5(d["raw_path"])})
     log.info(f"Метрики сохранены в {metrics_path} и {stats_path}")
 
-    log_to_mlflow(params, pipe, metrics, train_df.head(5))
+    if params["mlflow"]["enabled"] and not args.no_mlflow:
+        log_to_mlflow(params, pipe, metrics, train_df[cols].head(5))
 
 
 def build_model(params: dict) -> any:
