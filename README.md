@@ -46,3 +46,10 @@ make data                          # сгенерирует data/raw/churn.csv
 ## Куда это вырастет
 
 `../docs/syllabus.md` — план всех 18 занятий и артефакт каждого из них.
+
+## Запуск MLFlow локально
+```sh
+mlflow server --host 127.0.0.1 --port 5000 \
+  --backend-store-uri sqlite:///mlflow.db \
+  --default-artifact-root ./mlartifacts
+```
