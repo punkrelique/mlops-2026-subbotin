@@ -44,7 +44,7 @@ train:
     random_state: *seed
 
 evaluate:
-  threshold: 0.5
+  threshold: 0.245
   min_roc_auc: 0.75
 
 validate:
