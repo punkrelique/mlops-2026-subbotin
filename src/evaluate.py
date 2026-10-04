@@ -10,7 +10,7 @@ from pathlib import Path
 
 import joblib
 import pandas as pd
-from sklearn.metrics import auc, f1_score, precision_recall_curve, roc_auc_score
+from sklearn.metrics import auc, f1_score, precision_recall_curve, roc_auc_score, roc_curve
 
 from src.config import TARGET, data_md5, feature_columns, load_params, resolve, update_data_stats
 from src.logging_setup import setup_logging
@@ -58,6 +58,12 @@ def main() -> None:
 
     with open(metrics_path, "w", encoding="utf-8") as f:
         json.dump(metrics, f, indent=2)
+
+    fpr, tpr, _ = roc_curve(y_test, y_pred_proba)
+    step = max(1, len(fpr) // 200)
+    roc_path = reports_dir / "roc.json"
+    with open(roc_path, "w", encoding="utf-8") as f:
+        json.dump([{"fpr": float(a), "tpr": float(b)} for a, b in zip(fpr[::step], tpr[::step])], f)
 
     stats_path = update_data_stats("eval", {"data_md5": data_md5(d["raw_path"])})
     log.info(f"Метрики сохранены в {metrics_path} и {stats_path}")

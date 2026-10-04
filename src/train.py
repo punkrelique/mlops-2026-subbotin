@@ -80,6 +80,10 @@ def main() -> None:
     joblib.dump(pipe, model_path)
     log.info(f"Модель сохранена в {model_path}")
 
+    meta_path = models_dir / "model_meta.json"
+    with open(meta_path, "w") as f:
+        json.dump({"model": params["train"]["model"], "features": cols}, f, indent=2)
+
     # 8. Сохраняем метрики в JSON
     metrics = {
         "roc_auc": float(roc_auc),

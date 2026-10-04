@@ -19,6 +19,9 @@ check:           ## Проверить окружение
 data:            ## Сгенерировать сырой датасет
 	$(PY) -m src.data.generate
 
+validate:        ## Провалидировать данные
+	$(PY) -m src.data.validate
+
 prepare:         ## Подготовить train/val/test
 	$(PY) -m src.data.prepare
 
@@ -33,3 +36,6 @@ test:            ## Прогнать тесты
 
 lint:            ## Проверить стиль
 	ruff check src tests
+
+pipeline:        ## Воспроизвести пайплайн
+	dvc repro
