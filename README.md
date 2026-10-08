@@ -53,3 +53,10 @@ mlflow server --host 127.0.0.1 --port 5000 \
   --backend-store-uri sqlite:///mlflow.db \
   --default-artifact-root ./mlartifacts
 ```
+
+### Зачем тег `data_md5`, если уже есть `git_sha`
+
+`git_sha` фиксирует версию кода, но не версию данных. `generate` и кешируется DVC. Один и тот
+же коммит кода можно прогнать на разных версиях `churn.csv` (другой `seed`). `git_sha` в этом случае не изменится,
+а метрики будут другими. Тег `data_md5` это хеш файла данных из `dvc.lock`, он
+привязывает run в MLFlow к конкретной версии данных, независимо от версии кода
