@@ -7,6 +7,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from sklearn.metrics import ConfusionMatrixDisplay
+
 from src.config import load_params, resolve
 from src.logging_setup import setup_logging
 from utils.git import git_sha
@@ -110,7 +112,9 @@ def main() -> None:
     log.info(f"Метрики сохранены в {metrics_path} и {stats_path}")
 
     if params["mlflow"]["enabled"] and not args.no_mlflow:
-        log_to_mlflow(params, pipe, metrics, train_df[cols].head(5), y_val, y_pred_proba, data_hash)
+        log_to_mlflow(
+            params, pipe, metrics, train_df[cols].head(5), y_val, y_pred_proba, data_hash, y_val, y_pred
+        )
 
 
 def build_model(params: dict) -> any:
@@ -129,7 +133,7 @@ def build_model(params: dict) -> any:
         raise ValueError("Model is not specified.")
 
 
-def log_to_mlflow(params, pipe, metrics, input_example, y_val, val_proba, data_hash) -> None:
+def log_to_mlflow(params, pipe, metrics, input_example, y_val, val_proba, data_hash, y_true, y_pred) -> None:
     import mlflow
     import mlflow.sklearn
 
@@ -147,13 +151,17 @@ def log_to_mlflow(params, pipe, metrics, input_example, y_val, val_proba, data_h
         mlflow.set_tag("git_sha", git_sha())
         mlflow.set_tag("data_md5", data_hash)
         mlflow.log_artifact("params.yaml")
-        mlflow.sklearn.log_model(pipe, artifact_path="model", input_example=input_example)
+        mlflow.sklearn.log_model(pipe, artifact_path="model", input_example=input_example)  # type: ignore
 
         import matplotlib
 
         matplotlib.use("Agg")  # без этого упадёт в среде без дисплея
         import matplotlib.pyplot as plt
         from sklearn.metrics import RocCurveDisplay
+
+        disp = ConfusionMatrixDisplay.from_predictions(y_true, y_pred, display_labels=["y_true", "y_pred"])
+        mlflow.log_figure(disp.figure_, "confusion_matrix.png")
+        plt.close(disp.figure_)
 
         fig, ax = plt.subplots(figsize=(5, 5))
         RocCurveDisplay.from_predictions(y_val, val_proba, ax=ax)
