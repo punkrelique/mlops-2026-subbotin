@@ -33,3 +33,8 @@ mlflow.db
 .idea/
 .vscode/
 .DS_Store
+
+# mlflow
+mlflow.db
+mlartifacts/
+mlruns/

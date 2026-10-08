@@ -44,10 +44,16 @@ train:
     random_state: *seed
 
 evaluate:
-  threshold: 0.5
+  threshold: 0.245
   min_roc_auc: 0.75
 
 validate:
   min_rows: 5000
   max_missing_share: 0.05
   target_rate: [0.05, 0.60]
+
+mlflow:
+  enabled: true
+  tracking_uri: http://localhost:5000
+  experiment_name: churn
+  registered_model_name: churn-classifier
