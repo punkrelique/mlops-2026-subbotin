@@ -53,7 +53,7 @@ stages:
       size: 141025
       isexec: true
   train:
-    cmd: python -m src.train
+    cmd: python -m src.train --no-mlflow
     deps:
     - path: data/processed/train.csv
       hash: md5
@@ -72,8 +72,8 @@ stages:
       isexec: true
     - path: src/train.py
       hash: md5
-      md5: a2958430810e0aa68d692bd9b92690df
-      size: 3866
+      md5: 991f1fcfc6892a121a021a037f9afab9
+      size: 5710
       isexec: true
     params:
       params.yaml:
@@ -145,13 +145,13 @@ stages:
     params:
       params.yaml:
         evaluate:
-          threshold: 0.5
+          threshold: 0.245
           min_roc_auc: 0.75
     outs:
     - path: reports/eval_metrics.json
       hash: md5
-      md5: 206442cc2b0927e0342d529dc5b545be
-      size: 94
+      md5: d4b0432553066410dfc2fe14d8ebed2b
+      size: 93
       isexec: true
     - path: reports/roc.json
       hash: md5

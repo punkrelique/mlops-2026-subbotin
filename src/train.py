@@ -5,8 +5,9 @@
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
 
-from src.config import load_params
+from src.config import load_params, resolve
 from src.logging_setup import setup_logging
 from utils.git import git_sha
 
@@ -22,14 +23,13 @@ def main() -> None:
 
     # Импорты
     import json
-    from pathlib import Path
 
     import joblib
     import pandas as pd
     from sklearn.metrics import auc, f1_score, precision_recall_curve, roc_auc_score
     from sklearn.pipeline import Pipeline
 
-    from src.config import TARGET, data_md5, feature_columns, resolve, update_data_stats
+    from src.config import TARGET, data_md5, feature_columns, update_data_stats
     from src.features import build_preprocessor
 
     # 1. Загружаем данные
@@ -105,11 +105,12 @@ def main() -> None:
     with open(metrics_path, "w") as f:
         json.dump(metrics, f, indent=2)
 
-    stats_path = update_data_stats("train", {"data_md5": data_md5(d["raw_path"])})
+    data_hash = data_md5(d["raw_path"])
+    stats_path = update_data_stats("train", {"data_md5": data_hash})
     log.info(f"Метрики сохранены в {metrics_path} и {stats_path}")
 
     if params["mlflow"]["enabled"] and not args.no_mlflow:
-        log_to_mlflow(params, pipe, metrics, train_df[cols].head(5), y_val, y_pred_proba)
+        log_to_mlflow(params, pipe, metrics, train_df[cols].head(5), y_val, y_pred_proba, data_hash)
 
 
 def build_model(params: dict) -> any:
@@ -128,7 +129,7 @@ def build_model(params: dict) -> any:
         raise ValueError("Model is not specified.")
 
 
-def log_to_mlflow(params, pipe, metrics, input_example, y_val, val_proba) -> None:
+def log_to_mlflow(params, pipe, metrics, input_example, y_val, val_proba, data_hash) -> None:
     import mlflow
     import mlflow.sklearn
 
@@ -144,6 +145,7 @@ def log_to_mlflow(params, pipe, metrics, input_example, y_val, val_proba) -> Non
         mlflow.log_params({f"{name}.{k}": v for k, v in params["train"][name].items()})
         mlflow.log_metrics(metrics)
         mlflow.set_tag("git_sha", git_sha())
+        mlflow.set_tag("data_md5", data_hash)
         mlflow.log_artifact("params.yaml")
         mlflow.sklearn.log_model(pipe, artifact_path="model", input_example=input_example)
 
