@@ -1,3 +1,4 @@
+import datetime
 import json
 from pathlib import Path
 
@@ -33,6 +34,7 @@ class ModelHolder:
             name = params["mlflow"]["registered_model_name"]
             stage = params["service"]["model_stage"]
             model_uri = f"models:/{name}@champion"
+            log.info(self.get_model_details(name))
             self.check_signature(model_uri)
 
             self.model = mlflow.sklearn.load_model(model_uri)
@@ -68,6 +70,30 @@ class ModelHolder:
             raise RuntimeError(
                 f"сигнатура разошлась с конфигом: лишние {actual - expected}, недостающие {expected - actual}"
             )
+
+    def get_model_details(self, name: str) -> any:
+        client = mlflow.MlflowClient()
+        version = client.get_model_version_by_alias(name, "champion")
+
+        git_sha = None
+        try:
+            run = client.get_run(version.run_id)
+            git_sha = run.data.tags.get("git_sha") or run.data.tags.get("mlflow.source.git.commit")
+        except Exception as exc:
+            log.warning("Ошибка: %s", exc)
+
+        created = (
+            datetime.datetime.fromtimestamp(version.creation_timestamp / 1000, tz=datetime.timezone.utc)
+            if version.creation_timestamp
+            else None
+        )
+
+        return {
+            "name": version.name,
+            "version": version.version,
+            "git_sha": git_sha,
+            "registered_at": created.isoformat() if created else None,
+        }
 
 
 holder = ModelHolder()
