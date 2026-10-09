@@ -49,10 +49,16 @@ jobs:
           python -m pip install -U pip
           pip install -r requirements.txt
 
+      - name: Сгенерировать данные
+        if: steps.cache-raw.outputs.cache-hit != 'true'
+        run: python -m src.data.generate --n 4000
+
+      - name: Подготовить данные
+        if: steps.cache-processed.outputs.cache-hit != 'true'
+        run: python -m src.data.prepare
+
       - name: Воспроизвести пайплайн
         run: |
-          python -m src.data.generate --n 4000
-          python -m src.data.prepare
           python -m src.train --no-mlflow
           python -m src.evaluate
 
