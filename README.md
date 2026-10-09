@@ -73,3 +73,44 @@ mlflow server --host 127.0.0.1 --port 5000 \
 
 Порог:`0.245`. Высчитанный по формуле порог из предыдущих уроков для максимизации F1, если мы решаем,
 что нам важно удержать клиентов, а не сэкономить на скидках
+
+## Тесты и покрытие (lesson 8)
+
+Покрытие (`pytest --cov=src --cov-report=term-missing`):
+```sh
+(.venv) punkrelique@DESKTOP-SHNMMS0:/mnt/c/Users/punkrelique/dev/mlops-2026-subbotin$ pytest --cov=src --cov-report=term-missing
+...................                                                                                              [100%]
+
+---------- coverage: platform linux, python 3.12.3-final-0 -----------
+Name                          Stmts   Miss  Cover   Missing
+-----------------------------------------------------------
+src/__init__.py                   0      0   100%
+src/config.py                    38     20    47%   33-34, 44-51, 56-65
+src/data/__init__.py              3      0   100%
+src/data/generate.py             53     17    68%   34-36, 97-111, 116
+src/data/prepare.py              44     22    50%   42-78, 82
+src/data/validate.py             46     46     0%   5-77
+src/evaluate.py                  51     51     0%   5-77
+src/features.py                  12      0   100%
+src/logging_setup.py              8      0   100%
+src/service/__init__.py           0      0   100%
+src/service/model_loader.py      65     65     0%   1-99
+src/smoke_check.py               33     33     0%   2-44
+src/train.py                    109     87    20%   21-109, 133-138, 142-180, 184
+-----------------------------------------------------------
+TOTAL                           462    341    26%
+
+19 passed in 6.74s
+```
+
+Цифра низкая, потому что считается по всему `src/`, а тестами осознанно покрыты только чистые
+функции конвейера обучения (`generate`, `clean`, `split`, `build_preprocessor`, `build_pipeline`)
+
+- `main()` в `prepare.py`, `train.py`, `generate.py` CLI обертки (argparse, чтение/запись
+  CSV) вокруг уже протестированной логики. Такой тест `main()` проверял бы IO, а не поведение модели
+
+- `log_to_mlflow()` в `train.py` требует поднятого MLflow-сервера, это задача не для юнит теста
+
+- `src/data/validate.py`, `src/evaluate.py` CLI скрипты
+
+- `src/smoke_check.py` ручная диагностика окружения, а не часть пайплайна обучения
