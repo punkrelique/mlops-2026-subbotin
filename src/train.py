@@ -8,19 +8,20 @@ import argparse
 from pathlib import Path
 
 from sklearn.metrics import ConfusionMatrixDisplay
+from sklearn.pipeline import Pipeline
 
 from src.config import load_params, resolve
 from src.logging_setup import setup_logging
 from utils.git import git_sha
 
-parser = argparse.ArgumentParser()
-parser.add_argument("--no-mlflow", action="store_true")
-args = parser.parse_args()
-
 log = setup_logging()
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--no-mlflow", action="store_true")
+    args = parser.parse_args()
+
     params = load_params()
 
     # Импорты
@@ -29,10 +30,8 @@ def main() -> None:
     import joblib
     import pandas as pd
     from sklearn.metrics import auc, f1_score, precision_recall_curve, roc_auc_score
-    from sklearn.pipeline import Pipeline
 
     from src.config import TARGET, data_md5, feature_columns, update_data_stats
-    from src.features import build_preprocessor
 
     # 1. Загружаем данные
     log.info("Загружаю данные...")
@@ -55,12 +54,7 @@ def main() -> None:
     # 3. Строим Pipeline (препроцессор + модель)
     log.info("Построение Pipeline...")
     log.info(f"Модель {params['train']['model']}")
-    pipe = Pipeline(
-        [
-            ("preprocess", build_preprocessor(params)),
-            ("model", build_model(params)),
-        ]
-    )
+    pipe = build_pipeline(params)
 
     # 4. Обучаем
     log.info("Обучение...")
@@ -115,6 +109,17 @@ def main() -> None:
         log_to_mlflow(
             params, pipe, metrics, train_df[cols].head(5), y_val, y_pred_proba, data_hash, y_val, y_pred
         )
+
+
+def build_pipeline(params: dict) -> Pipeline:
+    from src.features import build_preprocessor
+
+    return Pipeline(
+        [
+            ("preprocess", build_preprocessor(params)),
+            ("model", build_model(params)),
+        ]
+    )
 
 
 def build_model(params: dict) -> any:
