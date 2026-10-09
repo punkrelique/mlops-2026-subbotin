@@ -1,3 +1,5 @@
+![CI](https://github.com/punkrelique/mlops-2026-subbotin/actions/workflows/ci.yml/badge.svg)
+
 [MLOPS2026](https://github.com/alsu124/mlops-deploy-course/blob/main/lessons/01-intro-project-setup/handout.md)
 
 # Churn MLOps — стартовый шаблон
