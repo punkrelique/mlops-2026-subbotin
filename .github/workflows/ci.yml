@@ -25,6 +25,9 @@ jobs:
           python -m pip install -U pip
           pip install -r requirements.txt -r requirements-dev.txt
 
+      - name: Форматирование
+        run: ruff format --check src tests
+
       - name: Линтер
         run: ruff check src tests
 
