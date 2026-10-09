@@ -2,8 +2,9 @@ import json
 from pathlib import Path
 
 import joblib
+import mlflow
 
-from src.config import load_params, resolve
+from src.config import feature_columns, load_params, resolve
 from src.logging_setup import setup_logging
 
 log = setup_logging()
@@ -31,7 +32,10 @@ class ModelHolder:
             mlflow.set_tracking_uri(params["mlflow"]["tracking_uri"])
             name = params["mlflow"]["registered_model_name"]
             stage = params["service"]["model_stage"]
-            self.model = mlflow.sklearn.load_model(f"models:/{name}@champion")
+            model_uri = f"models:/{name}@champion"
+            self.check_signature(model_uri)
+
+            self.model = mlflow.sklearn.load_model(model_uri)
             self.version = f"registry:{name}/{stage}"
             return True
         except Exception as exc:
@@ -47,6 +51,23 @@ class ModelHolder:
 
         meta = json.loads(meta_path.read_text())
         self.version = f"local:{meta['model']}"  # достаньте детали из models/model_meta.json
+
+    import mlflow
+
+    from src.config import feature_columns, load_params
+
+    def check_signature(self, model_uri: str) -> None:
+        signature = mlflow.models.get_model_info(model_uri).signature
+        if signature is None:
+            log.warning("у модели нет сигнатуры — обучите с input_example")
+            return
+
+        expected = set(feature_columns(load_params()))
+        actual = {c.name for c in signature.inputs.inputs}
+        if actual != expected:
+            raise RuntimeError(
+                f"сигнатура разошлась с конфигом: лишние {actual - expected}, недостающие {expected - actual}"
+            )
 
 
 holder = ModelHolder()
