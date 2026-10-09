@@ -66,19 +66,27 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const m = JSON.parse(fs.readFileSync('reports/eval_metrics.json'));
-            const body = [
-              '## Метрики этого PR',
-              '',
+            const pr = JSON.parse(fs.readFileSync('reports/eval_metrics.json', 'utf8'));
+            const res = await github.rest.repos.getContent({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                path: 'reports/eval_metrics.json',
+                ref: 'main',
+              });
+            const base = JSON.parse(Buffer.from(res.data.content, 'base64').toString('utf8'));
+            const fmt = (v) => (v === undefined || v === null ? '—' : v.toFixed(4));
+            const table = (m) => [
               '| Метрика | Значение |',
               '|---|---|',
-              `| ROC-AUC | ${m.roc_auc.toFixed(4)} |`,
-              `| PR-AUC | ${m.pr_auc.toFixed(4)} |`,
-              `| F1 | ${m.f1.toFixed(4)} |`,
-            ].join('\n');
+              `| ROC-AUC | ${fmt(m.roc_auc)} |`,
+              `| PR-AUC | ${fmt(m.pr_auc)} |`,
+              `| F1 | ${fmt(m.f1)} |`,
+            ];
+            const parts = ['## Метрики этого PR', '', ...table(pr)];
+            parts.push('', '### Baseline (`main`)', '', ...table(base));
             await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body,
+              body: parts.join('\n'),
             });
