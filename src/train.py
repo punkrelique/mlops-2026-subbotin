@@ -156,11 +156,16 @@ def log_to_mlflow(params, pipe, metrics, input_example, y_val, val_proba, data_h
         mlflow.set_tag("git_sha", git_sha())
         mlflow.set_tag("data_md5", data_hash)
         mlflow.log_artifact("params.yaml")
-        mlflow.sklearn.log_model(
+        model_info = mlflow.sklearn.log_model(
             pipe,
             artifact_path="model",
             input_example=input_example,
             registered_model_name=cfg["registered_model_name"],
+        )
+
+        client = mlflow.MlflowClient()
+        client.set_registered_model_alias(
+            cfg["registered_model_name"], "candidate", model_info.registered_model_version
         )
 
         import matplotlib
