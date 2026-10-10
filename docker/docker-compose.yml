@@ -1,0 +1,77 @@
+name: churn-mlops
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: churn-service:local
+    ports:
+      - "8000:8000"
+    environment:
+      LOG_LEVEL: INFO
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+    volumes:
+      - ../models:/app/models:ro
+    depends_on:
+      mlflow:
+        condition: service_started
+    restart: unless-stopped
+
+  mlflow:
+    build:
+      context: ..
+      dockerfile: docker/mlflow.Dockerfile
+    environment:
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin
+    command: >
+      mlflow server --host 0.0.0.0 --port 5000
+      --backend-store-uri postgresql://mlflow:mlflow@postgres:5432/mlflow
+      --artifacts-destination s3://mlflow/
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    ports:
+      - "5000:5000"
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: mlflow
+      POSTGRES_PASSWORD: mlflow
+      POSTGRES_DB: mlflow
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mlflow"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    image: rustfs/rustfs:latest
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # Web console
+    environment:
+      RUSTFS_ACCESS_KEY: minioadmin
+      RUSTFS_SECRET_KEY: minioadmin
+      RUSTFS_VOLUMES: /data
+      RUSTFS_ADDRESS: "0.0.0.0:9000"
+      RUSTFS_CONSOLE_ADDRESS: "0.0.0.0:9001"
+    volumes:
+      - rustfsdata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9000/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:
+  rustfsdata:
