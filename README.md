@@ -326,3 +326,35 @@ IMAGE          CREATED              CREATED BY                                  
 | slim | 2.44 GB |
 | multistage | 1.37 GB |
 | после отдельных requirements | 409 MB |
+
+## Проверьте отказоустойчивость: docker compose stop mlflow, затем запрос в /predict. Сервис обязан продолжать работать на локальной модели (lesson 12)
+Если выключить mlflow, то сервис дальше будет работать на уже загруженной модели. Только, если мы отправим запрос на `/reload`, то в таком случае загрузиться локальная модель. Сервис делает ретраи на MLFlow примерно 4 минуты при попытке загрузить модель
+
+## Нарисуйте схему стенда: сервисы, порты, кто с кем общается, где тома
+```mermaid
+flowchart TB
+    host["Host / клиент"]
+
+    subgraph stack["churn-mlops"]
+        api["api<br/>:8000"]
+        mlflow["mlflow<br/>:5000"]
+        postgres["postgres<br/>16-alpine"]
+        minio["minio<br/>:9000 / :9001"]
+        minio_init["minio-init<br/>mc mb (once)"]
+    end
+
+    models[("../models<br/>read-only mount")]
+    pgdata[("pgdata<br/>volume")]
+    rustfsdata[("rustfsdata<br/>volume")]
+
+    host -- "HTTP :8000" --> api
+    models -. "ro mount" .-> api
+    api -- "depends_on: service_started<br/>MLFLOW_TRACKING_URI" --> mlflow
+
+    mlflow -- "depends_on: service_healthy<br/>metadata (SQL)" --> postgres
+    mlflow -- "depends_on: service_healthy<br/>artifacts (S3)" --> minio
+
+    postgres -. "volume" .-> pgdata
+    minio -. "volume" .-> rustfsdata
+    minio_init -- "depends_on: service_healthy<br/>mc mb mlflow" --> minio
+```

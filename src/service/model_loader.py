@@ -29,6 +29,7 @@ class ModelHolder:
         try:
             import mlflow
 
+            log.info("Попытка загрузить модель с MLFlow")
             mlflow.set_tracking_uri(params["mlflow"]["tracking_uri"])
             name = params["mlflow"]["registered_model_name"]
             stage = params["service"]["model_stage"]
@@ -44,6 +45,7 @@ class ModelHolder:
             return False
 
     def _load_local(self, params) -> None:
+        log.info("Загрузка локальной модели")
         self.model = joblib.load(resolve(params["service"]["model_path"]))
 
         models_dir = Path(resolve("models"))
