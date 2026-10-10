@@ -286,3 +286,43 @@ Total: 2 (HIGH: 2, CRITICAL: 0)
 ```
 
 Большинство уявзимостей находятся в базовых утилитах `Debian`, есть 2 уявзимости, которые идут из пакетов `Python`: `jaraco.context` и `wheel`. Это транзитивные зависимости установленных пакетов. В `jaraco.context` в версии 6.1.0 это починили, можно попробовать обновить пакет, а с `wheel` CVE говорит:"Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')". Вероятно проблема в валидации путей - можно обратить внимание на это, пока в библиотеке не починили
+
+## Разберите docker history churn-service:local: какой слой самый тяжёлый и почему (lesson 11)
+
+Больше всего занимает `COPY /install /usr/local`, потому что в этой папке находятся все зависимости приложения
+
+```sh
+punkrelique@DESKTOP-SHNMMS0:/mnt/c/Users/punkrelique/dev/mlops-2026-subbotin$ docker history churn-service:local
+IMAGE          CREATED              CREATED BY                                      SIZE      COMMENT
+49212c2418ac   About a minute ago   CMD ["uvicorn" "src.service.app:app" "--host…   0B        buildkit.dockerfile.v0
+<missing>      About a minute ago   HEALTHCHECK &{["CMD-SHELL" "python -c \"impo…   0B        buildkit.dockerfile.v0
+<missing>      About a minute ago   EXPOSE &{[{{33 0} {33 0}}] 0xc0097359c0}        0B        buildkit.dockerfile.v0
+<missing>      About a minute ago   USER appuser                                    0B        buildkit.dockerfile.v0
+<missing>      About a minute ago   ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECO…   0B        buildkit.dockerfile.v0
+<missing>      About a minute ago   COPY models/ ./models/ # buildkit               5.97kB    buildkit.dockerfile.v0
+<missing>      About a minute ago   COPY params.yaml ./params.yaml # buildkit       1.4kB     buildkit.dockerfile.v0
+<missing>      About a minute ago   COPY src/ ./src/ # buildkit                     152kB     buildkit.dockerfile.v0
+<missing>      About a minute ago   COPY /install /usr/local # buildkit             284MB     buildkit.dockerfile.v0
+<missing>      About an hour ago    WORKDIR /app                                    0B        buildkit.dockerfile.v0
+<missing>      About an hour ago    RUN /bin/sh -c useradd --create-home --uid 1…   8.92kB    buildkit.dockerfile.v0
+<missing>      4 days ago           CMD ["python3"]                                 0B        buildkit.dockerfile.v0
+<missing>      4 days ago           RUN /bin/sh -c set -eux;  for src in idle3 p…   36B       buildkit.dockerfile.v0
+<missing>      4 days ago           RUN /bin/sh -c set -eux;   savedAptMark="$(a…   42.4MB    buildkit.dockerfile.v0
+<missing>      4 days ago           ENV PYTHON_SHA256=bfb74ad39efae27cda510f134a…   0B        buildkit.dockerfile.v0
+<missing>      4 days ago           ENV PYTHON_VERSION=3.11.17                      0B        buildkit.dockerfile.v0
+<missing>      4 days ago           ENV GPG_KEY=A035C8C19219BA821ECEA86B64E628F8…   0B        buildkit.dockerfile.v0
+<missing>      4 days ago           RUN /bin/sh -c set -eux;  apt-get update;  a…   3.81MB    buildkit.dockerfile.v0
+<missing>      4 days ago           ENV LANG=C.UTF-8                                0B        buildkit.dockerfile.v0
+<missing>      4 days ago           ENV PATH=/usr/local/bin:/usr/local/sbin:/usr…   0B        buildkit.dockerfile.v0
+<missing>      5 days ago           # debian.sh --arch 'amd64' out/ 'trixie' '@1…   78.8MB    debuerreotype 0.17
+```
+
+## Зафиксируйте в README.md таблицу: исходный размер → после .dockerignore → после slim → после multi-stage → после отдельных requirements. С цифрами (lesson 11)
+
+| Сценарий | Вес |
+| --- | --- |
+| raw | 3.51 GB |
+| .dockerignore | 3.42 GB |
+| slim | 2.44 GB |
+| multistage | 1.37 GB |
+| после отдельных requirements | 409 MB |
