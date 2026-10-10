@@ -3,7 +3,6 @@ import json
 from pathlib import Path
 
 import joblib
-import mlflow
 
 from src.config import feature_columns, load_params, resolve
 from src.logging_setup import setup_logging
@@ -54,11 +53,9 @@ class ModelHolder:
         meta = json.loads(meta_path.read_text())
         self.version = f"local:{meta['model']}"  # достаньте детали из models/model_meta.json
 
-    import mlflow
-
-    from src.config import feature_columns, load_params
-
     def check_signature(self, model_uri: str) -> None:
+        import mlflow
+
         signature = mlflow.models.get_model_info(model_uri).signature
         if signature is None:
             log.warning("у модели нет сигнатуры — обучите с input_example")
@@ -72,6 +69,8 @@ class ModelHolder:
             )
 
     def get_model_details(self, name: str) -> any:
+        import mlflow
+
         client = mlflow.MlflowClient()
         version = client.get_model_version_by_alias(name, "champion")
 

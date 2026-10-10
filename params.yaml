@@ -53,7 +53,7 @@ validate:
   target_rate: [0.05, 0.60]
 
 mlflow:
-  enabled: true
+  enabled: false
   tracking_uri: http://localhost:5000
   experiment_name: churn
   registered_model_name: churn-classifier
