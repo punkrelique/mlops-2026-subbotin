@@ -2,6 +2,13 @@ name: churn-mlops
 
 services:
   api:
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          memory: 256M
     build:
       context: ..
       dockerfile: docker/Dockerfile
@@ -19,6 +26,13 @@ services:
     restart: unless-stopped
 
   mlflow:
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          memory: 256M
     build:
       context: ..
       dockerfile: docker/mlflow.Dockerfile
@@ -39,6 +53,13 @@ services:
       - "5000:5000"
 
   postgres:
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 256M
+        reservations:
+          memory: 256M
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: mlflow
@@ -53,6 +74,13 @@ services:
       retries: 10
 
   minio:
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 256M
+        reservations:
+          memory: 256M
     image: rustfs/rustfs:latest
     command: server /data --console-address ":9001"
     ports:
@@ -71,6 +99,19 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  minio-init:
+    image: bitnamilegacy/minio-client:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    restart: "no"
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 minioadmin minioadmin &&
+      mc mb --ignore-existing local/mlflow &&
+      echo 'бакет mlflow готов'
+      "
 
 volumes:
   pgdata:
