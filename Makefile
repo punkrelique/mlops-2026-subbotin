@@ -56,3 +56,9 @@ mlflow-server:   ## Запустить MLflow локально
 	mlflow server --host 127.0.0.1 --port 5000 \
 		--backend-store-uri sqlite:///mlflow.db \
 		--default-artifact-root ./mlartifacts
+
+docker-build:    ## Собрать образ
+	docker build -f docker/Dockerfile -t churn-service:local .
+
+docker-run:      ## Запустить контейнер
+	docker run --rm -p 8000:8000 -v $(PWD)/models:/app/models:ro churn-service:local
