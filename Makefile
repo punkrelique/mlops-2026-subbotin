@@ -1,10 +1,16 @@
 # Будет расти по ходу курса. Правило: команду, которую приходится
 # вспоминать по истории терминала, оформляем целью здесь.
-.PHONY: help install check data prepare train test lint
+.PHONY: help install check data prepare train test lint serve mlflow-server
 
-export PATH := .venv/bin:$(PATH) ## Выполнять команды в окружении
-
+ifeq ($(OS),Windows_NT)
+VENV_BIN := .venv/Scripts
+PY := python
+else
+VENV_BIN := .venv/bin
 PY := python3
+endif
+
+export PATH := $(VENV_BIN):$(PATH) ## Выполнять команды в окружении
 
 help:            ## Показать список команд
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS=":.*?## "}; {printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
@@ -42,3 +48,11 @@ pipeline:        ## Воспроизвести пайплайн
 
 leaderboard:     ## Собрать таблицу лидеров из MLflow
 	$(PY) -m scripts.leaderboard
+
+serve:           ## Запустить сервис локально
+	uvicorn src.service.app:app --host 0.0.0.0 --port 8000 --reload
+
+mlflow-server:   ## Запустить MLflow локально
+	mlflow server --host 127.0.0.1 --port 5000 \
+		--backend-store-uri sqlite:///mlflow.db \
+		--default-artifact-root ./mlartifacts
