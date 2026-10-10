@@ -21,7 +21,11 @@ PARAMS_PATH = Path(os.getenv("PARAMS_PATH", PROJECT_ROOT / "params.yaml"))
 def load_params(path: Path = PARAMS_PATH) -> dict[str, Any]:
     """Читает params.yaml. Кэш не нужен: файл маленький, а неявный кэш путает."""
     with open(path, encoding="utf-8") as f:
-        return yaml.safe_load(f)
+        params = yaml.safe_load(f)
+    tracking_uri = os.getenv("MLFLOW_TRACKING_URI")
+    if tracking_uri:
+        params["mlflow"]["tracking_uri"] = tracking_uri
+    return params
 
 
 def resolve(relative: str) -> Path:
