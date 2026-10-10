@@ -2,14 +2,19 @@
 FROM python:3.11-slim@sha256:e88e9763f943ec1834f992a4b51e0f24500486803e8bc534e5767af9ea65f6ce AS builder
 
 WORKDIR /build
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential \
+RUN apt-get update \
+&& apt-get install -y --no-install-recommends build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 COPY docker/requirements-service.txt .
-RUN pip install --no-cache-dir --prefix=/install -r requirements-service.txt
+RUN pip install \
+    --no-cache-dir \
+    --no-compile \
+    --prefix=/install \
+    -r requirements-service.txt
 
 # ---------- финальный образ ----------
-FROM python:3.11-slim AS runtime
+FROM python:3.11-slim@sha256:e88e9763f943ec1834f992a4b51e0f24500486803e8bc534e5767af9ea65f6ce AS runtime
 
 RUN useradd --create-home --uid 10001 appuser
 
