@@ -1,0 +1,82 @@
+name: CD
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Подготовить модель для образа
+        run: |
+          pip install -r requirements.txt
+          python -m src.data.generate --n 8000
+          python -m src.data.prepare
+          python -m src.train --no-mlflow
+          python -m src.evaluate
+
+      - name: Проверить размер образа
+        run: |
+          IMAGE=$(echo "${{ steps.meta.outputs.tags }}" | head -1)
+          SIZE=$(docker image inspect "$IMAGE" --format='{{.Size}}')
+          MB=$((SIZE / 1024 / 1024))
+          echo "размер образа: ${MB} МБ"
+          test "$MB" -lt 500 || { echo "образ вырос больше 500 МБ"; exit 1; }
+
+      - name: Проверить образ
+        run: |
+          IMAGE=$(echo "${{ steps.meta.outputs.tags }}" | head -1)
+          docker run -d --name check -p 8000:8000 "$IMAGE"
+          for i in $(seq 1 20); do
+            sleep 2
+            curl -sf localhost:8000/health && break
+          done
+          curl -sf localhost:8000/health | grep -q '"model_loaded":true'
+          docker rm -f check
+
+      - name: Собрать SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ steps.meta.outputs.tags }}
+          format: spdx-json
+          output-file: sbom.spdx.json
+
+      - name: Приложить SBOM к релизу
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.spdx.json
+
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha
+
+      - uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
