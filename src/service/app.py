@@ -15,6 +15,7 @@ from src.service.schemas import (
     HealthResponse,
     Prediction,
 )
+from utils.git import git_sha
 
 
 @asynccontextmanager
@@ -54,6 +55,7 @@ def health() -> HealthResponse:
         status="ok" if holder.loaded else "degraded",
         model_loaded=holder.loaded,
         model_version=holder.version,
+        git_sha=git_sha(),
     )
 
 
