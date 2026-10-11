@@ -61,7 +61,7 @@ jobs:
       - name: Проверить образ
         run: |
           IMAGE=$(echo "${{ steps.meta.outputs.tags }}" | head -1)
-          docker run -d --name check -p 8000:8000 "$IMAGE"
+          docker run -d --name check -p 8000:8000 -e MLFLOW_ENABLED=false "$IMAGE"
           for i in $(seq 1 20); do
             sleep 2
             curl -sf localhost:8000/health && break

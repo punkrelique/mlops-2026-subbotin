@@ -25,6 +25,9 @@ def load_params(path: Path = PARAMS_PATH) -> dict[str, Any]:
     tracking_uri = os.getenv("MLFLOW_TRACKING_URI")
     if tracking_uri:
         params["mlflow"]["tracking_uri"] = tracking_uri
+    enabled = os.getenv("MLFLOW_ENABLED")
+    if enabled is not None:
+        params["mlflow"]["enabled"] = enabled.lower() not in ("0", "false", "no")
     return params
 
 
