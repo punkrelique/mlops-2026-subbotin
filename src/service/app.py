@@ -24,7 +24,7 @@ LATENCY = Histogram(
     "prediction_latency_seconds",
     "Время обработки запроса",
     ["endpoint"],
-    buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5),
+    buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.3, 0.5, 1.0, 2.5),
 )
 PROBA = Histogram(
     "prediction_probability",
@@ -125,25 +125,34 @@ def predict(customer: Customer) -> Prediction:
 
 @app.post("/predict/batch", response_model=BatchPrediction, tags=["inference"])
 def predict_batch(customer: BatchRequest) -> BatchPrediction | None:
-    params = load_params()
-    threshold = params["evaluate"]["threshold"]
-    if not holder.loaded:
-        raise HTTPException(status_code=503, detail="Модель не загружена")
+    start = time.perf_counter()
+    try:
+        params = load_params()
+        threshold = params["evaluate"]["threshold"]
+        if not holder.loaded:
+            raise HTTPException(status_code=503, detail="Модель не загружена")
 
-    df = pd.DataFrame([c.model_dump() for c in customer.items])[feature_columns(params)]
-    probas = holder.model.predict_proba(df)[:, 1]
+        df = pd.DataFrame([c.model_dump() for c in customer.items])[feature_columns(params)]
+        probas = holder.model.predict_proba(df)[:, 1]
 
-    items = [
-        Prediction(
-            churn_probability=round(float(p), 6),
-            churn=int(p >= threshold),
-            threshold=threshold,
-            model_version=holder.version,
-        )
-        for p in probas
-    ]
-
-    return BatchPrediction(items=items, count=len(items))
+        items = [
+            Prediction(
+                churn_probability=round(float(p), 6),
+                churn=int(p >= threshold),
+                threshold=threshold,
+                model_version=holder.version,
+            )
+            for p in probas
+        ]
+        for p in items:
+            PROBA.observe(p.churn_probability)
+        REQUESTS.labels("predict_batch", "ok").inc()
+        return BatchPrediction(items=items, count=len(items))
+    except HTTPException:
+        REQUESTS.labels("predict_batch", "error").inc()
+        raise
+    finally:
+        LATENCY.labels("predict_batch").observe(time.perf_counter() - start)
 
 
 @app.post("/explain", response_model=Explanation, tags=["inference"])
