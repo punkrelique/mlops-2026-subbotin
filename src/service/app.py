@@ -1,8 +1,10 @@
+import time
 import uuid
 from contextlib import asynccontextmanager
 
 import pandas as pd
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Response
+from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
 
 from src.config import feature_columns, load_params
 from src.logging_setup import request_id_var
@@ -17,6 +19,20 @@ from src.service.schemas import (
 )
 from utils.git import git_sha
 
+REQUESTS = Counter("prediction_requests_total", "Число запросов предсказания", ["endpoint", "status"])
+LATENCY = Histogram(
+    "prediction_latency_seconds",
+    "Время обработки запроса",
+    ["endpoint"],
+    buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.3, 0.5, 1.0, 2.5),
+)
+PROBA = Histogram(
+    "prediction_probability",
+    "Распределение предсказанных вероятностей",
+    buckets=[i / 10 for i in range(11)],
+)
+MODEL_LOADED = Gauge("model_loaded", "1 — модель загружена, 0 — нет")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -24,8 +40,10 @@ async def lifespan(app: FastAPI):
     # каждый запрос будет идти секундами.
     try:
         holder.load()
+        MODEL_LOADED.set(1)
     except Exception as exc:
         log.error("не удалось загрузить модель: %s", exc)
+        MODEL_LOADED.set(0)
     yield
 
 
@@ -48,6 +66,25 @@ async def add_request_id(request: Request, call_next):
     return response
 
 
+@app.middleware("http")
+async def access_log(request: Request, call_next):
+    start = time.perf_counter()
+    response = await call_next(request)
+    log.info(
+        "%s %s -> %s за %.1f мс",
+        request.method,
+        request.url.path,
+        response.status_code,
+        (time.perf_counter() - start) * 1000,
+    )
+    return response
+
+
+@app.get("/metrics")
+def metrics() -> Response:
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+
 @app.get("/health", response_model=HealthResponse, tags=["service"])
 def health() -> HealthResponse:
     """Жив ли процесс и загружена ли модель."""
@@ -61,42 +98,61 @@ def health() -> HealthResponse:
 
 @app.post("/predict", response_model=Prediction, tags=["inference"])
 def predict(customer: Customer) -> Prediction:
-    params = load_params()
-    threshold = params["evaluate"]["threshold"]
-    if not holder.loaded:
-        raise HTTPException(status_code=503, detail="Модель не загружена")
+    start = time.perf_counter()
+    try:
+        params = load_params()
+        threshold = params["evaluate"]["threshold"]
+        if not holder.loaded:
+            raise HTTPException(status_code=503, detail="Модель не загружена")
 
-    df = pd.DataFrame([customer.model_dump()])[feature_columns(params)]
-    proba = float(holder.model.predict_proba(df)[0, 1])
-    return Prediction(
-        churn_probability=round(proba, 6),
-        churn=int(proba >= threshold),
-        threshold=threshold,
-        model_version=holder.version,
-    )
+        df = pd.DataFrame([customer.model_dump()])[feature_columns(params)]
+        proba = float(holder.model.predict_proba(df)[0, 1])
+        result = Prediction(
+            churn_probability=round(proba, 6),
+            churn=int(proba >= threshold),
+            threshold=threshold,
+            model_version=holder.version,
+        )
+        PROBA.observe(result.churn_probability)
+        REQUESTS.labels("predict", "ok").inc()
+        return result
+    except HTTPException:
+        REQUESTS.labels("predict", "error").inc()
+        raise
+    finally:
+        LATENCY.labels("predict").observe(time.perf_counter() - start)
 
 
 @app.post("/predict/batch", response_model=BatchPrediction, tags=["inference"])
 def predict_batch(customer: BatchRequest) -> BatchPrediction | None:
-    params = load_params()
-    threshold = params["evaluate"]["threshold"]
-    if not holder.loaded:
-        raise HTTPException(status_code=503, detail="Модель не загружена")
+    start = time.perf_counter()
+    try:
+        params = load_params()
+        threshold = params["evaluate"]["threshold"]
+        if not holder.loaded:
+            raise HTTPException(status_code=503, detail="Модель не загружена")
 
-    df = pd.DataFrame([c.model_dump() for c in customer.items])[feature_columns(params)]
-    probas = holder.model.predict_proba(df)[:, 1]
+        df = pd.DataFrame([c.model_dump() for c in customer.items])[feature_columns(params)]
+        probas = holder.model.predict_proba(df)[:, 1]
 
-    items = [
-        Prediction(
-            churn_probability=round(float(p), 6),
-            churn=int(p >= threshold),
-            threshold=threshold,
-            model_version=holder.version,
-        )
-        for p in probas
-    ]
-
-    return BatchPrediction(items=items, count=len(items))
+        items = [
+            Prediction(
+                churn_probability=round(float(p), 6),
+                churn=int(p >= threshold),
+                threshold=threshold,
+                model_version=holder.version,
+            )
+            for p in probas
+        ]
+        for p in items:
+            PROBA.observe(p.churn_probability)
+        REQUESTS.labels("predict_batch", "ok").inc()
+        return BatchPrediction(items=items, count=len(items))
+    except HTTPException:
+        REQUESTS.labels("predict_batch", "error").inc()
+        raise
+    finally:
+        LATENCY.labels("predict_batch").observe(time.perf_counter() - start)
 
 
 @app.post("/explain", response_model=Explanation, tags=["inference"])

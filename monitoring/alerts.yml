@@ -1,0 +1,44 @@
+groups:
+  - name: churn-service
+    rules:
+      - alert: ModelNotLoaded
+        expr: model_loaded == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Процесс жив, но модель не загружена"
+          action: "Проверить доступность MLflow Registry и наличие models/model.joblib"
+
+      - alert: HighLatencyP95
+        expr: histogram_quantile(0.95, sum(rate(prediction_latency_seconds_bucket[5m])) by (le)) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "p95 latency превысил 500 мс"
+          action: "Смотреть размер батчей и загрузку CPU контейнера"
+
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(prediction_requests_total{status="error"}[5m]))
+          / sum(rate(prediction_requests_total[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Доля ошибочных ответов превысила 5% за 5 минут"
+          action: "Смотреть логи api на 503/422, проверить /health и состояние MLflow Registry"
+
+      - alert: ErrorBudgetBurningFast
+        expr: |
+          (1 - (
+            sum(rate(prediction_latency_seconds_bucket{le="0.3"}[1h]))
+            / sum(rate(prediction_latency_seconds_count[1h]))
+          )) > 0.01 * 14
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Бюджет ошибок расходуется в 14 раз быстрее нормы"
+          action: "При таком темпе месячный бюджет кончится за двое суток. Смотреть дашборд latency."
