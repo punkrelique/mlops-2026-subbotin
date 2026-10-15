@@ -68,3 +68,7 @@ up:              ## Поднять стенд
 
 down:            ## Погасить стенд
 	docker compose -f docker/docker-compose.yml down
+
+drift:           ## Отчёт о дрейфе
+	$(PY) -m src.data.generate --drift --out data/raw/fresh.csv --n 5000
+	$(PY) -m src.monitoring.drift --current data/raw/fresh.csv
